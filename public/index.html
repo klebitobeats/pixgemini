@@ -3,208 +3,248 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pagamento Pix - Mercado Pago</title>
+    <title>Pagamento Pix - appaçaí</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f0f2f5;
+            background-color: #f0fdf4; /* Tailwind teal-50 */
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            margin: 0;
+            padding: 1rem;
         }
         .container {
             background-color: #ffffff;
-            padding: 2.5rem;
-            border-radius: 1rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border-radius: 1.5rem; /* rounded-3xl */
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); /* shadow-2xl */
+            padding: 2rem;
             width: 100%;
-            max-width: 500px;
+            max-width: 28rem; /* max-w-md */
             text-align: center;
         }
+        .qr-code-placeholder {
+            width: 100%;
+            max-width: 200px;
+            height: 200px;
+            background-color: #e2e8f0; /* gray-200 */
+            margin: 1.5rem auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 0.75rem; /* rounded-xl */
+            font-weight: 600;
+            color: #64748b; /* gray-600 */
+        }
+        .copy-button {
+            background-color: #10b981; /* teal-500 */
+            color: white;
+            font-weight: bold;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem; /* rounded-xl */
+            transition: background-color 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            margin-top: 1rem;
+        }
+        .copy-button:hover {
+            background-color: #059669; /* teal-600 */
+        }
+        .back-button {
+            background-color: #6b7280; /* gray-500 */
+            color: white;
+            font-weight: bold;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem; /* rounded-xl */
+            transition: background-color 0.3s ease;
+            width: 100%;
+            margin-top: 1.5rem;
+        }
+        .back-button:hover {
+            background-color: #4b5563; /* gray-600 */
+        }
         .loading-spinner {
-            border: 4px solid rgba(0, 0, 0, 0.1);
-            border-left-color: #007bff;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #10b981; /* teal-500 */
             border-radius: 50%;
             width: 40px;
             height: 40px;
             animation: spin 1s linear infinite;
-            margin: 2rem auto;
+            margin: 0 auto 1rem;
         }
         @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .pix-info {
-            background-color: #e0f7fa;
-            border: 1px solid #b2ebf2;
-            border-radius: 0.75rem;
-            padding: 1.25rem;
-            margin-top: 1.5rem;
-            text-align: center;
-        }
-        .copy-button {
-            background-color: #28a745; /* Green for copy */
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            border: none;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background-color 0.3s ease;
-            margin-top: 0.75rem;
-        }
-        .copy-button:hover {
-            background-color: #218838;
-        }
-        .back-button {
-            background-color: #6c757d; /* Gray for back */
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.5rem;
-            border: none;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background-color 0.3s ease;
-            margin-top: 1.5rem;
-        }
-        .back-button:hover {
-            background-color: #5a6268;
-        }
-        .message-box {
-            background-color: #fff3cd;
-            border: 1px solid #ffeeba;
-            color: #856404;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            margin-top: 1rem;
-            display: none; /* Hidden by default */
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Pagamento Pix</h1>
+        <h1 class="text-3xl font-extrabold text-gray-900 mb-4">Pagamento Pix</h1>
+        <p class="text-gray-700 text-lg mb-6">Escaneie o QR Code ou copie e cole o código Pix para pagar.</p>
 
-        <div id="loading" class="loading-spinner"></div>
-        <p id="loadingText" class="text-gray-600">Gerando QR Code Pix...</p>
-
-        <div id="pixContent" style="display: none;">
-            <p class="text-xl font-semibold text-gray-700 mb-4">Valor a Pagar: R$ <span id="displayValor">0.00</span></p>
-            <p class="text-gray-600 mb-2">Escaneie o QR Code com o aplicativo do seu banco:</p>
-            <img id="qrCodeImage" src="" alt="QR Code Pix" class="mx-auto w-64 h-64 border-2 border-gray-300 rounded-lg p-2">
-
-            <div class="pix-info mt-6">
-                <p class="text-lg font-semibold text-gray-700 mb-2">Ou copie e cole o código Pix:</p>
-                <textarea id="pixCopyPaste" rows="4" class="w-full p-3 rounded-lg border border-gray-300 bg-gray-50 text-gray-800" readonly></textarea>
-                <button id="copyButton" class="copy-button">Copiar Código Pix</button>
-                <div id="copyMessage" class="message-box">Copiado!</div>
-            </div>
-
-            <p class="text-sm text-gray-500 mt-4">Aguardando confirmação do pagamento...</p>
+        <div id="loading-message" class="text-center text-gray-600 mb-4">
+            <div class="loading-spinner"></div>
+            Gerando Pix...
         </div>
 
-        <button id="backToAppButton" class="back-button">Voltar para Meus Pedidos</button>
-        <div id="errorMessage" class="message-box bg-red-100 border-red-400 text-red-700"></div>
+        <div id="pix-content" class="hidden">
+            <img id="qr-code-img" src="" alt="QR Code Pix" class="qr-code-placeholder mx-auto" onerror="this.onerror=null;this.src='https://placehold.co/200x200/e2e8f0/64748b?text=QR+Code+Indisponível';">
+            <p class="text-xl font-bold text-teal-600 mb-4">Valor: R$ <span id="pix-value">0.00</span></p>
+            
+            <div class="relative mb-4">
+                <input type="text" id="pix-code" readonly class="w-full p-3 border border-gray-300 rounded-md bg-gray-50 text-gray-800 text-sm sm:text-base pr-12">
+                <button id="copy-button" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-600 hover:text-teal-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9z" />
+                        <path d="M5 3a2 2 0 00-2 2v6a2 2 0 002 2V5h8a2 2 0 00-2-2H5z" />
+                    </svg>
+                </button>
+            </div>
+            <p id="copy-message" class="text-sm text-green-600 mt-2 hidden">Copiado!</p>
+            <p class="text-sm text-gray-500 mt-2">Este Pix é válido por 30 minutos.</p>
+        </div>
+
+        <button id="return-button" class="back-button">Voltar para o aplicativo</button>
     </div>
 
-    <script>
-        // *** IMPORTANTE: Substitua esta URL pela URL do seu projeto principal na Vercel ***
-        // Exemplo: const MAIN_APP_URL = "https://meu-webapp-principal.vercel.app";
-        const MAIN_APP_URL = "https://meu-webapp-principal.vercel.app";
+    <script type="module">
+        // Importa as funções do Firebase SDK
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        // Configuração do Firebase para o projeto Pix Vercel
+        // ATENÇÃO: Substitua pelos dados do SEU projeto Firebase (o mesmo do app principal)
+        const firebaseConfig = {
+            apiKey: "AIzaSyCaZMRp0RgA9szhZHJfvh4p8Bg60YWSUZw", // Seu API Key
+            authDomain: "appv-ec0aa.firebaseapp.com", // Seu Auth Domain
+            projectId: "appv-ec0aa", // Seu Project ID
+            storageBucket: "appv-ec0aa.firebasestorage.app", // Seu Storage Bucket
+            messagingSenderId: "366005480793", // Seu Messaging Sender ID
+            appId: "1:366005480793:web:7f3b104fb013d5825ff048", // Seu App ID
+            measurementId: "G-7K52CGG31W" // Seu Measurement ID
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // Função para obter o userId (anônimo ou autenticado)
+        async function getOrCreateUserId() {
+            if (auth.currentUser) {
+                return auth.currentUser.uid;
+            } else {
+                try {
+                    const userCredential = await signInAnonymously(auth);
+                    return userCredential.user.uid;
+                } catch (error) {
+                    console.error("Erro ao fazer login anônimo:", error);
+                    return null; // Retorna nulo em caso de erro
+                }
+            }
+        }
 
         document.addEventListener('DOMContentLoaded', async () => {
             const urlParams = new URLSearchParams(window.location.search);
             const valor = urlParams.get('valor');
-            const idPedido = urlParams.get('id_pedido');
-            const endereco = urlParams.get('endereco');
+            const id_pedido = urlParams.get('id_pedido');
+            const endereco = urlParams.get('endereco'); // String JSON
             const observacoes = urlParams.get('observacoes');
+            const whatsapp = urlParams.get('whatsapp');
+            const userEmail = urlParams.get('userEmail');
 
-            const loadingDiv = document.getElementById('loading');
-            const loadingText = document.getElementById('loadingText');
-            const pixContentDiv = document.getElementById('pixContent');
-            const errorMessageDiv = document.getElementById('errorMessage');
-            const backToAppButton = document.getElementById('backToAppButton');
+            const pixValueSpan = document.getElementById('pix-value');
+            const qrCodeImg = document.getElementById('qr-code-img');
+            const pixCodeInput = document.getElementById('pix-code');
+            const copyButton = document.getElementById('copy-button');
+            const copyMessage = document.getElementById('copy-message');
+            const loadingMessage = document.getElementById('loading-message');
+            const pixContent = document.getElementById('pix-content');
+            const returnButton = document.getElementById('return-button');
 
-            document.getElementById('displayValor').textContent = parseFloat(valor).toFixed(2);
+            const APP_ID = firebaseConfig.projectId; // Usando o Project ID como APP_ID
 
-            if (!valor || !idPedido) {
-                loadingDiv.style.display = 'none';
-                loadingText.style.display = 'none';
-                errorMessageDiv.style.display = 'block';
-                errorMessageDiv.textContent = 'Erro: Valor ou ID do pedido não informados.';
-                backToAppButton.onclick = () => window.location.href = MAIN_APP_URL;
+            if (!valor || !id_pedido) {
+                console.error("Parâmetros 'valor' ou 'id_pedido' ausentes na URL.");
+                loadingMessage.textContent = "Erro: Informações do pedido ausentes.";
+                returnButton.onclick = () => window.location.href = `https://seu-app-principal.vercel.app/my-orders?status_pagamento=erro&id_pedido=${id_pedido || 'N/A'}`;
                 return;
             }
 
+            pixValueSpan.textContent = parseFloat(valor).toFixed(2);
+
             try {
-                // Chama a API de backend para criar o pagamento Pix
-                const response = await fetch('/api/create-pix-payment', {
+                // Simula a chamada à sua API para gerar o Pix
+                // ATENÇÃO: Substitua esta URL pela URL real da sua função serverless create-pix-payment.js
+                // Ex: /api/create-pix-payment ou https://pixgemini.vercel.app/api/create-pix-payment
+                const response = await fetch('/api/create-pix-payment', { 
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
                         valor: parseFloat(valor),
-                        id_pedido: idPedido,
-                        endereco: endereco ? JSON.parse(endereco) : {},
-                        observacoes: observacoes
+                        id_pedido: id_pedido,
+                        endereco: JSON.parse(endereco), // Parseia a string JSON de volta para objeto
+                        observacoes: observacoes,
+                        whatsapp: whatsapp,
+                        userEmail: userEmail
                     })
                 });
 
-                const data = await response.json();
-
-                if (response.ok && data.qr_code_base64 && data.pix_copy_paste) {
-                    document.getElementById('qrCodeImage').src = `data:image/png;base64,${data.qr_code_base64}`;
-                    document.getElementById('pixCopyPaste').value = data.pix_copy_paste;
-
-                    loadingDiv.style.display = 'none';
-                    loadingText.style.display = 'none';
-                    pixContentDiv.style.display = 'block';
-
-                    // Redireciona para a página principal após 10 minutos se o pagamento não for confirmado
-                    // Em um cenário real, você teria um sistema de polling ou websockets para verificar o status
-                    // ou o webhook do Mercado Pago faria a atualização no seu backend.
-                    // Para este tutorial, vamos simular um redirecionamento após um tempo.
-                    setTimeout(() => {
-                        // Se o pagamento não foi processado pelo webhook, podemos considerar como não aprovado
-                        // ou redirecionar para uma página de "verificar status do pedido"
-                        // Aqui, vamos simular um "não aprovado" se não houver interação do webhook.
-                        window.location.href = `${MAIN_APP_URL}?status_pagamento=nao_aprovado&id_pedido=${idPedido}`;
-                    }, 600000); // 10 minutos (600000 milissegundos)
-                } else {
-                    errorMessageDiv.style.display = 'block';
-                    errorMessageDiv.textContent = `Erro ao gerar Pix: ${data.error || 'Erro desconhecido'}`;
-                    loadingDiv.style.display = 'none';
-                    loadingText.style.display = 'none';
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Falha ao gerar Pix');
                 }
+
+                const data = await response.json();
+                const pixQrCodeBase64 = data.qrCodeBase64; // Base64 do QR Code
+                const pixCode = data.pixCode; // Código copia e cola
+
+                if (pixQrCodeBase64) {
+                    qrCodeImg.src = `data:image/png;base64,${pixQrCodeBase64}`;
+                } else {
+                    qrCodeImg.src = 'https://placehold.co/200x200/e2e8f0/64748b?text=QR+Code+Indisponível';
+                }
+                pixCodeInput.value = pixCode;
+
+                loadingMessage.classList.add('hidden');
+                pixContent.classList.remove('hidden');
+
+                // Define o comportamento do botão de retorno
+                returnButton.onclick = () => {
+                    // Redireciona de volta para o app principal, informando o status do pagamento
+                    // O status aqui é 'pendente' porque o pagamento ainda não foi confirmado pelo webhook
+                    window.location.href = `https://seu-app-principal.vercel.app/my-orders?status_pagamento=pendente&id_pedido=${id_pedido}`;
+                };
+
             } catch (error) {
-                console.error('Erro na requisição:', error);
-                errorMessageDiv.style.display = 'block';
-                errorMessageDiv.textContent = 'Erro de conexão ao gerar Pix. Tente novamente.';
-                loadingDiv.style.display = 'none';
-                loadingText.style.display = 'none';
+                console.error("Erro ao processar Pix:", error);
+                loadingMessage.textContent = `Erro ao gerar Pix: ${error.message}. Por favor, tente novamente.`;
+                // Se houver erro na geração, o pedido pode ser marcado como cancelado ou com erro
+                const userId = await getOrCreateUserId();
+                if (userId) {
+                    const userOrderDocRef = doc(db, 'artifacts', APP_ID, 'users', userId, 'orders', id_pedido);
+                    const publicOrderDocRef = doc(db, 'artifacts', APP_ID, 'public', 'data', 'all_orders', id_pedido);
+                    await setDoc(userOrderDocRef, { status: 'Erro na Geração Pix', lastUpdated: serverTimestamp() }, { merge: true });
+                    await setDoc(publicOrderDocRef, { status: 'Erro na Geração Pix', lastUpdated: serverTimestamp() }, { merge: true });
+                }
+                returnButton.onclick = () => window.location.href = `https://seu-app-principal.vercel.app/my-orders?status_pagamento=erro&id_pedido=${id_pedido}`;
             }
 
-            // Botão de copiar
-            document.getElementById('copyButton').addEventListener('click', () => {
-                const pixCode = document.getElementById('pixCopyPaste');
-                pixCode.select();
-                document.execCommand('copy'); // Usa execCommand para compatibilidade em iframes
-                const copyMessage = document.getElementById('copyMessage');
-                copyMessage.style.display = 'block';
+            copyButton.addEventListener('click', () => {
+                pixCodeInput.select();
+                document.execCommand('copy'); // Funciona em iframes
+                copyMessage.classList.remove('hidden');
                 setTimeout(() => {
-                    copyMessage.style.display = 'none';
+                    copyMessage.classList.add('hidden');
                 }, 2000);
             });
-
-            // Botão "Voltar para Meus Pedidos"
-            backToAppButton.onclick = () => {
-                // Redireciona de volta para a página principal, sem status de pagamento,
-                // ou com um status de "cancelado" se o usuário desistir.
-                window.location.href = `${MAIN_APP_URL}?status_pagamento=cancelado&id_pedido=${idPedido}`;
-            };
         });
     </script>
 </body>

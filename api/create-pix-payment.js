@@ -91,7 +91,12 @@ module.exports = async (req, res) => {
     }
 
     try {
-        const description = `Pedido de Açaí #${orderId.substring(0, 8)} - Itens: ${orderDetails.items.map(item => `${item.name} (x${item.quantity})`).join(', ')}`;
+        // Verifica se orderDetails.items existe e é um array antes de tentar mapear
+        const itemsDescription = orderDetails.items && Array.isArray(orderDetails.items)
+            ? orderDetails.items.map(item => `${item.name} (x${item.quantity})`).join(', ')
+            : 'Itens não especificados'; // Fallback se items não for um array válido
+
+        const description = `Pedido de Açaí #${orderId.substring(0, 8)} - Itens: ${itemsDescription}`;
         console.log("Descrição do pagamento:", description);
 
         const preference = {
@@ -120,8 +125,15 @@ module.exports = async (req, res) => {
 
         console.log("Tentando criar preferência de pagamento no Mercado Pago...");
         const response = await mp.preferences.create(preference);
+        console.log("RESPOSTA COMPLETA DO MERCADO PAGO:", JSON.stringify(response, null, 2)); // Log da resposta completa
         const pixData = response.body;
-        console.log("Resposta do Mercado Pago:", pixData);
+        console.log("Corpo da resposta do Mercado Pago (pixData):", pixData);
+
+        // Verifica se os dados necessários para o Pix existem na resposta
+        if (!pixData || !pixData.point_of_interaction || !pixData.point_of_interaction.transaction_data) {
+            console.error("Estrutura de resposta do Mercado Pago inesperada:", pixData);
+            return res.status(500).json({ error: 'Resposta inesperada do Mercado Pago ao gerar Pix.' });
+        }
 
         const qrCodeBase64 = pixData.point_of_interaction.transaction_data.qr_code_base64;
         const pixCode = pixData.point_of_interaction.transaction_data.qr_code;
@@ -130,7 +142,7 @@ module.exports = async (req, res) => {
         console.log("Resposta enviada com sucesso.");
 
     } catch (error) {
-        console.error('ERRO AO CRIAR PAGAMENTO PIX:', error.response ? error.response.data : error.message);
+        console.error('ERRO GERAL NO FLUXO DE PAGAMENTO PIX:', error.response ? error.response.data : error.message);
         // Tenta atualizar o status do pedido no Firestore para indicar falha
         try {
             console.log("Tentando atualizar status do pedido no Firestore para 'Erro na Geração Pix'...");

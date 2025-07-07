@@ -5,56 +5,76 @@
 const mercadopago = require('mercadopago');
 
 // Instancie o SDK do Mercado Pago antes de configurar
-const mp = new mercadopago(); // <--- CORREÇÃO AQUI: Instancia a classe MercadoPago
+const mp = new mercadopago(); 
 
 // Configure suas credenciais do Mercado Pago usando variáveis de ambiente da Vercel.
 // MERCADO_PAGO_ACCESS_TOKEN = SEU_ACCESS_TOKEN_AQUI
-mp.configure({ // <--- CORREÇÃO AQUI: Chama configure na instância 'mp'
+mp.configure({ 
     access_token: process.env.MERCADO_PAGO_ACCESS_TOKEN
 });
 
 // Importa o Firebase Admin SDK para interagir com o Firestore
 const admin = require('firebase-admin');
 
+let db; // Variável para a instância do Firestore
+
 // Inicializa o Firebase Admin SDK (se ainda não estiver inicializado)
 if (!admin.apps.length) {
     try {
+        console.log("Tentando inicializar Firebase Admin SDK...");
         const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
         admin.initializeApp({
             credential: admin.credential.cert(serviceAccount)
         });
+        db = admin.firestore(); // Atribui a instância do Firestore após a inicialização bem-sucedida
+        console.log("Firebase Admin SDK inicializado com sucesso.");
     } catch (error) {
-        console.error("Erro ao inicializar Firebase Admin SDK em create-pix-payment:", error);
+        console.error("ERRO CRÍTICO: Falha ao inicializar Firebase Admin SDK:", error);
         // Em um ambiente de produção, é crucial que esta parte funcione.
+        // Se a inicialização falhar, as operações subsequentes do Firestore também falharão.
+        // Retornamos um erro 500 imediatamente para o cliente.
+        // Não podemos usar 'db' aqui, pois ele pode não ter sido inicializado.
+        module.exports = async (req, res) => {
+            return res.status(500).json({ error: 'Erro de configuração do servidor (Firebase Admin SDK).', details: error.message });
+        };
+        return; // Sai da execução para evitar que o código continue com um SDK não inicializado
     }
+} else {
+    // Se já estiver inicializado, apenas obtém a instância do Firestore
+    db = admin.firestore();
+    console.log("Firebase Admin SDK já estava inicializado.");
 }
-const db = admin.firestore(); // Obtém a instância do Firestore
+
 
 module.exports = async (req, res) => {
+    console.log("Requisição recebida para create-pix-payment.");
+    
+    // Verifica se o Firebase Admin SDK está inicializado antes de prosseguir
+    if (!db) {
+        console.error("Firebase Admin SDK não inicializado ou Firestore indisponível no fluxo principal.");
+        return res.status(500).json({ error: "Serviço de banco de dados indisponível. Tente novamente mais tarde." });
+    }
+
     if (req.method !== 'POST') {
+        console.log("Método não permitido:", req.method);
         return res.status(405).json({ error: 'Método não permitido. Use POST.' });
     }
 
-    // Recebe os parâmetros do seu aplicativo HTML (via POST do Vercel checkout page)
     const { orderId, userId, amount } = req.body;
+    console.log("Dados recebidos:", { orderId, userId, amount });
 
     if (!orderId || !userId || !amount) {
+        console.error("Dados obrigatórios ausentes:", { orderId, userId, amount });
         return res.status(400).json({ error: 'ID do pedido, ID do usuário e valor são obrigatórios.' });
-    }
-
-    // Verifica se o Firebase Admin SDK está inicializado
-    if (!admin.apps.length || !db) {
-        console.error("Firebase Admin SDK não inicializado ou Firestore indisponível.");
-        return res.status(500).json({ error: "Serviço de banco de dados indisponível. Tente novamente mais tarde." });
     }
 
     // Define o APP_ID com base no projectId do seu Firebase (appfuncional-47d81)
     const APP_ID = 'appfuncional-47d81'; // Hardcoded conforme seu Firebase projectId
+    console.log("APP_ID:", APP_ID);
 
     let orderDetails;
     try {
-        // 1. Busca os detalhes completos do pedido no Firestore
-        // Isso garante que temos todas as informações (itens, endereço, telefone, etc.)
+        console.log(`Buscando detalhes do pedido ${orderId} para o usuário ${userId}...`);
         const orderDocRef = db.collection('artifacts').doc(APP_ID).collection('users').doc(userId).collection('orders').doc(orderId);
         const orderDoc = await orderDocRef.get();
 
@@ -71,52 +91,49 @@ module.exports = async (req, res) => {
     }
 
     try {
-        // Constrói a descrição do pagamento com base nos itens do pedido
         const description = `Pedido de Açaí #${orderId.substring(0, 8)} - Itens: ${orderDetails.items.map(item => `${item.name} (x${item.quantity})`).join(', ')}`;
+        console.log("Descrição do pagamento:", description);
 
-        // Objeto de preferência de pagamento para o Mercado Pago
         const preference = {
             transaction_amount: parseFloat(amount),
             description: description,
-            external_reference: orderId, // Usar o ID do pedido como referência externa
+            external_reference: orderId,
             payment_method_id: 'pix',
             payer: {
-                email: orderDetails.email || 'pagador_anonimo@email.com', // Email do usuário do pedido ou um placeholder
+                email: orderDetails.email || 'pagador_anonimo@email.com',
             },
-            // CRUCIAL: Passa o userId no metadata para o webhook poder identificar o usuário
             metadata: {
                 userId: userId,
-                orderId: orderId, // Redundante, mas útil para depuração
+                orderId: orderId,
                 address: orderDetails.address,
                 phone: orderDetails.phone,
-                // Você pode adicionar outros detalhes do pedido aqui se precisar no webhook
             },
-            // URLs de retorno após o pagamento (redireciona para a página de pedidos do seu app principal)
             back_urls: {
                 success: `https://indexazai.vercel.app/#orders?status=aprovado&orderId=${orderId}`,
                 pending: `https://indexazai.vercel.app/#orders?status=pendente&orderId=${orderId}`,
                 failure: `https://indexazai.vercel.app/#orders?status=nao_aprovado&orderId=${orderId}`
             },
-            // URL do seu webhook na Vercel para receber notificações de pagamento
             notification_url: `https://pixgemini.vercel.app/api/mercado-pago-webhook`,
-            auto_return: 'all', // Redireciona o usuário automaticamente
+            auto_return: 'all',
         };
+        console.log("Preferência do Mercado Pago criada:", preference);
 
-        // Cria a preferência de pagamento no Mercado Pago
-        const response = await mp.preferences.create(preference); // <--- CORREÇÃO AQUI: Chama create na instância 'mp'
+        console.log("Tentando criar preferência de pagamento no Mercado Pago...");
+        const response = await mp.preferences.create(preference);
         const pixData = response.body;
+        console.log("Resposta do Mercado Pago:", pixData);
 
-        // Extrai o QR Code e o código copia e cola
         const qrCodeBase64 = pixData.point_of_interaction.transaction_data.qr_code_base64;
         const pixCode = pixData.point_of_interaction.transaction_data.qr_code;
 
-        // Retorna os dados do Pix para o cliente (sua página de checkout no Vercel)
         res.status(200).json({ qrCodeBase64, pixCode, orderId, userId });
+        console.log("Resposta enviada com sucesso.");
 
     } catch (error) {
-        console.error('Erro ao criar pagamento Pix:', error.response ? error.response.data : error.message);
-        // Em caso de erro, atualiza o status do pedido no Firestore para indicar falha
+        console.error('ERRO AO CRIAR PAGAMENTO PIX:', error.response ? error.response.data : error.message);
+        // Tenta atualizar o status do pedido no Firestore para indicar falha
         try {
+            console.log("Tentando atualizar status do pedido no Firestore para 'Erro na Geração Pix'...");
             const orderDocRef = db.collection('artifacts').doc(APP_ID).collection('users').doc(userId).collection('orders').doc(orderId);
             await orderDocRef.update({
                 status: 'Erro na Geração Pix',

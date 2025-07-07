@@ -4,12 +4,12 @@
 // Importe o SDK do Mercado Pago
 const mercadopago = require('mercadopago');
 
-// Instancie o SDK do Mercado Pago antes de configurar
-const mp = new mercadopago(); 
+// NÃO INSTANCIAR: O SDK do Mercado Pago é um objeto direto, não uma classe.
+// const mp = new mercadopago(); // Linha removida/comentada
 
 // Configure suas credenciais do Mercado Pago usando variáveis de ambiente da Vercel.
 // MERCADO_PAGO_ACCESS_TOKEN = SEU_ACCESS_TOKEN_AQUI
-mp.configure({ 
+mercadopago.configure({ // <--- CORREÇÃO AQUI: Chama configure diretamente no objeto mercadopago
     access_token: process.env.MERCADO_PAGO_ACCESS_TOKEN
 });
 
@@ -124,7 +124,8 @@ module.exports = async (req, res) => {
         console.log("Preferência do Mercado Pago criada:", preference);
 
         console.log("Tentando criar preferência de pagamento no Mercado Pago...");
-        const response = await mp.preferences.create(preference);
+        // <--- CORREÇÃO AQUI: Chama preferences.create diretamente no objeto mercadopago
+        const response = await mercadopago.preferences.create(preference); 
         console.log("RESPOSTA COMPLETA DO MERCADO PAGO:", JSON.stringify(response, null, 2)); // Log da resposta completa
         const pixData = response.body;
         console.log("Corpo da resposta do Mercado Pago (pixData):", pixData);

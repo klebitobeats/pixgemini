@@ -1,16 +1,12 @@
 // api/create-pix-payment.js
 // Esta é uma função Serverless para Vercel.
 
-// Importe o SDK do Mercado Pago
-const mercadopago = require('mercadopago');
+// Importe o SDK do Mercado Pago (agora desestruturando as classes necessárias)
+const { MercadoPagoConfig, Preference } = require('mercadopago'); // <--- CORREÇÃO AQUI: Importa as classes
 
-// NÃO INSTANCIAR: O SDK do Mercado Pago é um objeto direto, não uma classe.
-// const mp = new mercadopago(); // Linha removida/comentada
-
-// Configure suas credenciais do Mercado Pago usando variáveis de ambiente da Vercel.
-// MERCADO_PAGO_ACCESS_TOKEN = SEU_ACCESS_TOKEN_AQUI
-mercadopago.configure({ // <--- CORREÇÃO AQUI: Chama configure diretamente no objeto mercadopago
-    access_token: process.env.MERCADO_PAGO_ACCESS_TOKEN
+// Instancie o cliente do Mercado Pago com seu Access Token
+const client = new MercadoPagoConfig({ // <--- CORREÇÃO AQUI: Instancia MercadoPagoConfig
+    accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN
 });
 
 // Importa o Firebase Admin SDK para interagir com o Firestore
@@ -99,11 +95,14 @@ module.exports = async (req, res) => {
         const description = `Pedido de Açaí #${orderId.substring(0, 8)} - Itens: ${itemsDescription}`;
         console.log("Descrição do pagamento:", description);
 
-        const preference = {
+        // Instancie a classe Preference com o cliente
+        const preferenceInstance = new Preference(client); // <--- CORREÇÃO AQUI: Instancia Preference com o client
+
+        const preferenceBody = { // Corpo da preferência
             transaction_amount: parseFloat(amount),
             description: description,
             external_reference: orderId,
-            payment_method_id: 'pix',
+            payment_method_id: 'pix', // Para Pix, o payment_method_id é 'pix'
             payer: {
                 email: orderDetails.email || 'pagador_anonimo@email.com',
             },
@@ -121,11 +120,11 @@ module.exports = async (req, res) => {
             notification_url: `https://pixgemini.vercel.app/api/mercado-pago-webhook`,
             auto_return: 'all',
         };
-        console.log("Preferência do Mercado Pago criada:", preference);
+        console.log("Corpo da preferência do Mercado Pago criada:", preferenceBody);
 
-        console.log("Tentando criar preferência de pagamento no Mercado Pago...");
-        // <--- CORREÇÃO AQUI: Chama preferences.create diretamente no objeto mercadopago
-        const response = await mercadopago.preferences.create(preference); 
+        console.log("Tentando criar preferência de pagamento no Mercado Pago (SDK v2.x)...");
+        // Chama create na instância da preferência, passando o corpo
+        const response = await preferenceInstance.create({ body: preferenceBody }); // <--- CORREÇÃO AQUI: Chama create na instância
         console.log("RESPOSTA COMPLETA DO MERCADO PAGO:", JSON.stringify(response, null, 2)); // Log da resposta completa
         const pixData = response.body;
         console.log("Corpo da resposta do Mercado Pago (pixData):", pixData);
@@ -143,7 +142,7 @@ module.exports = async (req, res) => {
         console.log("Resposta enviada com sucesso.");
 
     } catch (error) {
-        console.error('ERRO GERAL NO FLUXO DE PAGAMENTO PIX:', error.response ? error.response.data : error.message);
+        console.error('ERRO GERAL NO FLUXO DE PAGAMENTO PIX:', error.response ? JSON.stringify(error.response.data, null, 2) : error.message);
         // Tenta atualizar o status do pedido no Firestore para indicar falha
         try {
             console.log("Tentando atualizar status do pedido no Firestore para 'Erro na Geração Pix'...");
@@ -151,7 +150,7 @@ module.exports = async (req, res) => {
             await orderDocRef.update({
                 status: 'Erro na Geração Pix',
                 lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-                errorMessage: error.message // Salva a mensagem de erro para depuração
+                errorMessage: error.response ? JSON.stringify(error.response.data) : error.message // Salva a mensagem de erro para depuração
             });
             console.log(`Status do pedido ${orderId} do usuário ${userId} atualizado para 'Erro na Geração Pix' no Firestore.`);
         } catch (firestoreError) {

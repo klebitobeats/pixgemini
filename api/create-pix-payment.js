@@ -4,9 +4,12 @@
 // Importe o SDK do Mercado Pago
 const mercadopago = require('mercadopago');
 
+// Instancie o SDK do Mercado Pago antes de configurar
+const mp = new mercadopago(); // <--- CORREÇÃO AQUI: Instancia a classe MercadoPago
+
 // Configure suas credenciais do Mercado Pago usando variáveis de ambiente da Vercel.
 // MERCADO_PAGO_ACCESS_TOKEN = SEU_ACCESS_TOKEN_AQUI
-mercadopago.configure({
+mp.configure({ // <--- CORREÇÃO AQUI: Chama configure na instância 'mp'
     access_token: process.env.MERCADO_PAGO_ACCESS_TOKEN
 });
 
@@ -89,7 +92,6 @@ module.exports = async (req, res) => {
                 // Você pode adicionar outros detalhes do pedido aqui se precisar no webhook
             },
             // URLs de retorno após o pagamento (redireciona para a página de pedidos do seu app principal)
-            // ATENÇÃO: Substituído 'https://seu-app-principal.vercel.app' pela URL real do seu app HTML
             back_urls: {
                 success: `https://indexazai.vercel.app/#orders?status=aprovado&orderId=${orderId}`,
                 pending: `https://indexazai.vercel.app/#orders?status=pendente&orderId=${orderId}`,
@@ -101,7 +103,7 @@ module.exports = async (req, res) => {
         };
 
         // Cria a preferência de pagamento no Mercado Pago
-        const response = await mercadopago.preferences.create(preference);
+        const response = await mp.preferences.create(preference); // <--- CORREÇÃO AQUI: Chama create na instância 'mp'
         const pixData = response.body;
 
         // Extrai o QR Code e o código copia e cola
